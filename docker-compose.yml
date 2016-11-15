@@ -1,0 +1,44 @@
+version: '2'
+
+services:
+  elasticsearch:
+    container_name: elasticsearch
+    build: elasticsearch/
+    ports:
+      - "9200:9200"
+    networks:
+      - halo_elk
+  logstash:
+    container_name: logstash
+    build: logstash/
+    command: -e 'input { beats { port => 5044 codec=>"json" } } output { elasticsearch { hosts => "http://elasticsearch:9200" } }'
+    ports:
+      - "5044:5044"
+    links:
+      - "elasticsearch:9200"
+    networks:
+      - halo_elk
+  kibana:
+    container_name: kibana
+    build: kibana/
+    environment:
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+    ports:
+      - "5601:5601"
+    links:
+      - "elasticsearch:9200"
+    networks:
+      - halo_elk
+  haloevents:
+    container_name: halo_events
+    image: docker.io/ashmastaflash/halo_filebeat:latest
+    environment:
+      HALO_API_KEY: ${HALO_API_KEY}
+      HALO_API_SECRET_KEY: ${HALO_API_SECRET_KEY}
+      LOGSTASH_HOST: "logstash:5044"
+    networks:
+      - halo_elk
+
+networks:
+  halo_elk:
+    driver: bridge
